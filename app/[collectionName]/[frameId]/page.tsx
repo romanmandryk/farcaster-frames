@@ -1,9 +1,7 @@
-import { redirect } from "next/navigation";
 import descriptions from "./descriptions";
 import Link from "next/link";
-import type { Metadata, ResolvingMetadata } from "next";
-
-const HOST = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.NEXT_PUBLIC_HOST;
+import type { ResolvingMetadata } from "next";
+import { getNumberFromFrameId, HOST, MAX_FRAME_NUMBER } from "@/utils";
 
 type Props = {
   params: { collectionName: string; frameId: string };
@@ -15,9 +13,9 @@ export async function generateMetadata(
 ): Promise<any> {
   // read route params
   const { frameId, collectionName } = params;
-  const currentFrameNumber = parseInt(frameId?.substring(1), 10); // Extracting the numeric part and converting to integer
+  const currentFrameNumber = getNumberFromFrameId(frameId);
 
-  const image = `${HOST}/img/${frameId}.png`;
+  const image = `${HOST}/img/${collectionName}/${frameId}.png`;
 
   return {
     title: collectionName,
@@ -28,19 +26,20 @@ export async function generateMetadata(
       "fc:frame:image:aspect_ratio": "1:1",
       "fc:frame:button:1": "Back",
       "fc:frame:button:2": "Next",
-      "fc:frame:post_url": `${HOST}/${collectionName}/f${currentFrameNumber + 1}`,
+      "fc:frame:post_url": `${HOST}/api/${collectionName}/f${currentFrameNumber}`,
     },
     openGraph: { images: image },
   };
 }
 export default function Frame({ params }: Props) {
-  const currentFrameNumber = parseInt(params.frameId?.substring(1), 10); // Extracting the numeric part and converting to integer
+  const { frameId, collectionName } = params;
+  const currentFrameNumber = getNumberFromFrameId(frameId);
   const getNextFrameUrl = (direction: string): string => {
     let nextFrameNumber =
       direction === "next" ? currentFrameNumber + 1 : currentFrameNumber - 1;
     if (nextFrameNumber < 1) nextFrameNumber = 1;
-    if (nextFrameNumber > 7) nextFrameNumber = 7;
-    return `/${params.collectionName}/f${nextFrameNumber}`;
+    if (nextFrameNumber > MAX_FRAME_NUMBER) nextFrameNumber = MAX_FRAME_NUMBER;
+    return `/${collectionName}/f${nextFrameNumber}`;
   };
 
   return (
@@ -49,14 +48,14 @@ export default function Frame({ params }: Props) {
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="aspect-w-1 aspect-h-1">
             <img
-              src={"/img/" + params.frameId + ".png"}
-              alt={params.frameId}
+              src={`/img/${collectionName}/${frameId}.png`}
+              alt={frameId}
               className="w-full h-full object-cover object-center"
             />
           </div>
           <div className="p-4">
             <p className="text-base font-medium text-gray-900">
-              {descriptions[params.frameId as keyof typeof descriptions]}
+              {descriptions[frameId as keyof typeof descriptions]}
             </p>
           </div>
           <div className="flex justify-between p-4">
@@ -76,8 +75,8 @@ export default function Frame({ params }: Props) {
         </div>
       </div>
 
-      {/*<p>collectionName: {params.collectionName}</p>
-          <p>frameId: {params.frameId}</p>*/}
+      {/*<p>collectionName: {collectionName}</p>
+          <p>frameId: {frameId}</p>*/}
     </main>
   );
 }
